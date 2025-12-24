@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interface Océan & Soleil Enrichie</title>
+    <title>Océan & Soleil - Cloud Sync</title>
     <style>
+        /* RESET & BASE */
         body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: 'Segoe UI', sans-serif;
+            margin: 0; padding: 0; height: 100%;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
         }
 
         .container {
             display: flex;
             height: 100vh;
+            width: 100vw;
         }
 
         .side {
@@ -25,63 +25,81 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
+            transition: all 0.3s ease;
         }
 
-        /* Thème Océan : Dégradé abyssal vers turquoise */
+        /* THÈME OCÉAN (GAUCHE) */
         .ocean {
             background: linear-gradient(180deg, #000524 0%, #003973 40%, #1565C0 75%, #00d2ff 100%);
-            border-right: 10px solid #fecaca; /* Rose doux */
-            color: #fecaca;
+            border-right: 10px solid #ffb6c1; /* Accents roses */
+            color: #ffb6c1;
         }
 
-        /* Thème Soleil : Dégradé crépuscule doré */
+        /* THÈME SOLEIL (DROITE) */
         .sun {
             background: radial-gradient(circle at center, #fff700 0%, #ff8c00 30%, #ff4e50 70%, #2c3e50 100%);
-            color: #fff;
+            color: #ffffff;
         }
 
+        /* COMPOSANTS */
         .box {
             background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             padding: 25px;
             border-radius: 20px;
             margin: 15px;
             width: 85%;
-            max-width: 400px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            max-width: 380px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
             border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
         }
 
-        h2 { 
-            text-transform: uppercase; 
-            letter-spacing: 4px; 
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        h2 {
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            opacity: 0.9;
         }
 
         input {
             width: 100%;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 14px;
+            border-radius: 10px;
             border: none;
-            margin-top: 10px;
             box-sizing: border-box;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
+            font-size: 1rem;
+            color: #333;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .display-area {
             min-height: 80px;
-            font-size: 1.3rem;
+            font-size: 1.4rem;
             font-weight: bold;
             word-wrap: break-word;
             display: flex;
             align-items: center;
             justify-content: center;
-            text-align: center;
             border: 2px solid currentColor;
-            border-radius: 12px;
+            border-radius: 15px;
             padding: 15px;
-            background: rgba(0, 0, 0, 0.1);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .side { border-right: none; border-bottom: 5px solid #ffb6c1; }
         }
     </style>
 </head>
@@ -91,45 +109,79 @@
     <section class="side ocean">
         <h2>🌊 Océan</h2>
         <div class="box">
-            <label>Saisie (Volatile) :</label>
-            <input type="text" id="inputOcean" placeholder="Message secret des profondeurs...">
+            <label>Zone de saisie (Volatile)</label>
+            <input type="text" id="inputOcean" placeholder="Écrire un message...">
         </div>
         <div class="box">
-            <label>Message persistant :</label>
-            <div id="displayOcean" class="display-area"></div>
+            <label>Message partagé (DOM)</label>
+            <div id="displayOcean" class="display-area">Chargement...</div>
         </div>
     </section>
 
     <section class="side sun">
         <h2>☀️ Soleil</h2>
         <div class="box">
-            <label>Saisie (Volatile) :</label>
-            <input type="text" id="inputSun" placeholder="Message gravé dans l'aurore...">
+            <label>Zone de saisie (Volatile)</label>
+            <input type="text" id="inputSun" placeholder="Écrire un message...">
         </div>
         <div class="box">
-            <label>Message persistant :</label>
-            <div id="displaySun" class="display-area"></div>
+            <label>Message partagé (DOM)</label>
+            <div id="displaySun" class="display-area">Chargement...</div>
         </div>
     </section>
 </div>
 
-<script>
-    const setupPersistence = (inputId, displayId, storageKey) => {
-        const inputEl = document.getElementById(inputId);
-        const displayEl = document.getElementById(displayId);
+<script type="module">
+    // Importation des modules Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const savedMessage = localStorage.getItem(storageKey);
-        if (savedMessage) displayEl.textContent = savedMessage;
+    // Ta configuration spécifique
+    const firebaseConfig = {
+        apiKey: "AIzaSyB6rU_ImcOi9HXsvQw__NdkHt8_ooRE3Cs",
+        authDomain: "message-for-later.firebaseapp.com",
+        projectId: "message-for-later",
+        storageBucket: "message-for-later.firebasestorage.app",
+        messagingSenderId: "770966872574",
+        appId: "1:770966872574:web:de823771cf3a60aeebe0af",
+        measurementId: "G-H37QNK640F"
+    };
 
-        inputEl.addEventListener('input', (e) => {
-            const value = e.target.value;
-            displayEl.textContent = value;
-            localStorage.setItem(storageKey, value);
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    /**
+     * Gère la synchronisation pour un côté de la page
+     */
+    const setupSide = (inputId, displayId, docName) => {
+        const input = document.getElementById(inputId);
+        const display = document.getElementById(displayId);
+        const docRef = doc(db, "messages", docName);
+
+        // 1. ÉCOUTER (Cloud -> UI)
+        // Se déclenche dès qu'une modification a lieu en base de données
+        onSnapshot(docRef, (snap) => {
+            if (snap.exists()) {
+                display.textContent = snap.data().text;
+            } else {
+                display.textContent = "Aucun message";
+            }
+        });
+
+        // 2. ENVOYER (UI -> Cloud)
+        // Se déclenche à chaque lettre tapée
+        input.addEventListener('input', (e) => {
+            setDoc(docRef, { 
+                text: e.target.value,
+                updatedAt: new Date()
+            }, { merge: true });
         });
     };
 
-    setupPersistence('inputOcean', 'displayOcean', 'ocean_msg_v2');
-    setupPersistence('inputSun', 'displaySun', 'sun_msg_v2');
+    // Lancement pour les deux côtés
+    setupSide('inputOcean', 'displayOcean', 'ocean');
+    setupSide('inputSun', 'displaySun', 'sun');
 </script>
 
 </body>
