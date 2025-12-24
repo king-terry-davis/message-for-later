@@ -160,12 +160,21 @@
         const display = document.getElementById(displayId);
         const docRef = doc(db, "messages", docName);
 
+        // Écoute en temps réel
         onSnapshot(docRef, (snap) => {
-            if (snap.exists()) display.textContent = snap.data().text;
+            if (snap.exists() && snap.data().text !== "") {
+                display.textContent = snap.data().text;
+            } else {
+                display.textContent = "(Vide)"; // Placeholder si rien en base
+            }
         });
 
+        // Envoi des données
         input.addEventListener('input', (e) => {
-            setDoc(docRef, { text: e.target.value }, { merge: true });
+            setDoc(docRef, { 
+                text: e.target.value,
+                updatedAt: new Date() 
+            }, { merge: true });
         });
     };
 
